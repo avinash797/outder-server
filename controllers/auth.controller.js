@@ -108,7 +108,7 @@ const updatePassword = async (req, res, next) => {
     }
 
     // Update password and save user
-    user.password = newPassword;
+    user.password =  bcrypt.hash(newPassword, 10);
     await user.save();
 
     return res.status(httpStatus.OK).json({ 
