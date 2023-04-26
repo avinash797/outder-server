@@ -1,28 +1,37 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const routes = require('./Routes/routes');
+const cors = require('cors')
+const express = require('express')
+const helmet = require('helmet')
+const mongoSanitize = require('express-mongo-sanitize')
+const mongoose = require('mongoose')
+const morgan = require('morgan')
+const path = require('path')
+const xss = require('xss-clean')
 
+const config = require('./config')
 
-const app = express();
-const mongoString = process.env.DATABASE_URL
+const app = express()
 
-mongoose.connect(mongoString);
-const database = mongoose.connection;
+app.use(morgan('common'))
+app.use(helmet({
+  contentSecurityPolicy: false
+}))
+app.use(cors())
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+app.use(xss())
+app.use(mongoSanitize())
 
-database.on('error', (error) => {
-    console.log(error)
-})
+app.use(express.static(path.join(__dirname, 'public')))
+app.use('/api', require('./routes'))
+app.use(require('./routes/errors').clientErrorHandler)
+app.use(require('./routes/errors').errorHandler)
 
-database.once('connected', () => {
-    console.log('Database Connected');
-})
-
-app.use('/api', routes)
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-
-app.listen(3000, () => {
-    console.log(`Server Started at ${4100}`)
+mongoose.connect(config.mongoose.connectionString, config.mongoose.options).then(() => {
+  console.log('Connected to MongoDB')
+  app.listen(config.port, () =>
+    console.log(`App listening on port ${config.port}`)
+  )
+}).catch(err => {
+  console.error(err)
+  console.log('Failed to connect to MongoDB')
 })
